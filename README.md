@@ -1,6 +1,6 @@
-### Implementation of Aggregation Factors
+### Implementation of Belief Lifting
 
-This branch of the repo contains the code for implementing the aggregation factors that we discussed in the report. 
+This branch of the repo contains the code for implementing the belief lifting technique that we discussed in the report. 
 
 There are two `ipynb` files:
 

@@ -5,6 +5,7 @@ from .gaussian import Gaussian
 from .functions import h_dXdt, h_dYdt, dEdt, dIdt
 import numpy as np
 import random
+import re
 
 class ObservationFactor:
     def __init__(self, factor_id, var_id, z, lmbda_in, graph : Graph, huber = False) -> None:
@@ -80,10 +81,10 @@ class DynamicsFactor:
     Represents a dynamics factor that enforces dynamics between `Et_id` (left) and `Etp_id` (right),
     and is also connected to learnable parameters given by `parameters`.
     '''
-    def __init__(self, Vt_id, Vtp_id, Sigma_id, lmbda_in : Tensor, factor_id, graph : Graph, huber = False, connected_params = [], mode = 'WC') -> None:
+    def __init__(self, Vt_id, Vtp_id, region_id, conn, lmbda_in : Tensor, factor_id, graph : Graph, huber = False, connected_params = [], mode = 'WC') -> None:
         self.Vt_id, self.Vtp_id = Vt_id, Vtp_id
-        self.Sigma_id = Sigma_id
-        
+        self.r = region_id
+        self.C = conn
         self.lmbda_in = lmbda_in
         self.factor_id = factor_id
         self.graph : Graph = graph
@@ -98,18 +99,36 @@ class DynamicsFactor:
         # Used for message damping, see Ortiz (2023) 3.4.6
         self._prev_messages = {}
 
-        self._connected_vars = [Vt_id, Vtp_id, Sigma_id] + list(self.parameters)
+        self._connected_vars = [Vt_id, Vtp_id] + list(self.parameters)
 
         self.huber = huber
 
         self.mode = mode
 
-    def _h_fn(self, Et, It, Etp, Itp, E_ext, I_ext, a, b, c, d, P, Q):
-        h_ext = Etp - (Et + 0.05*(dEdt(Et, It, E_ext, a, b, P)))
-        h_inh = Itp - (It + 0.05*(dIdt(Et, It, I_ext, c, d, Q)))
+    def _h_fn(self, Et, It, Etp, Itp, a, b, c, d, P, Q):
+        curr_t = re.search('osc_t(.*)_', self.Vt_id).group(1)
+        E_sum, I_sum = 0., 0.
+        for r_id in range(self.graph.nr):
+            if r_id == self.r: continue
+            
+            belief = self.graph.get_var_belief(f'osc_t{curr_t}_r{r_id}').mean.detach().clone()
+            E_sum += self.C[self.r, r_id] * belief[0] 
+            I_sum += self.C[self.r, r_id] * belief[1]
+
+        h_ext = Etp - (Et + 0.05*(dEdt(Et, It, E_sum, a, b, P)))
+        h_inh = Itp - (It + 0.05*(dIdt(Et, It, I_sum, c, d, Q)))
         return torch.concat([h_ext, h_inh], dim=1)
     
-    def hopf_h_fn(self, Et, It, Etp, Itp, X_ext, Y_ext, a, omega):
+    def hopf_h_fn(self, Et, It, Etp, Itp, a, omega):
+        curr_t = re.search('osc_t(.*)_', self.Vt_id).group(1)
+        X_ext, Y_ext = 0., 0.
+        for r_id in range(self.graph.nr):
+            if r_id == self.r: continue
+            
+            belief = self.graph.get_var_belief(f'osc_t{curr_t}_r{r_id}').mean.detach().clone()
+            X_ext += self.C[self.r, r_id] * belief[0]
+            Y_ext += self.C[self.r, r_id] * belief[1]
+
         h_ext = Etp - (Et + 0.01*(h_dXdt(Et, It, a, omega, X_ext)))
         h_inh = Itp - (It + 0.01*(h_dYdt(Et, It, a, omega, Y_ext)))
         return torch.concat([h_ext, h_inh], dim=1)
@@ -133,17 +152,15 @@ class DynamicsFactor:
 
         Et_mu, It_mu = connected_variables[0:2]
         Etp_mu, Itp_mu = connected_variables[2:4]
-        E_ext, I_ext = connected_variables[4:6]
-
 
         if self.mode == 'WC':
-            a,b,c,d,P,Q = connected_variables[6:]
-            self.h = self._h_fn(Et_mu, It_mu, Etp_mu, Itp_mu, E_ext, I_ext, a, b, c, d, P, Q)
-            J = torch.concat(torch.autograd.functional.jacobian(self._h_fn, (Et_mu, It_mu, Etp_mu, Itp_mu, E_ext, I_ext, a, b, c, d, P, Q)), 0)[..., 0, 0].T
+            a,b,c,d,P,Q = connected_variables[4:]
+            self.h = self._h_fn(Et_mu, It_mu, Etp_mu, Itp_mu, a, b, c, d, P, Q)
+            J = torch.concat(torch.autograd.functional.jacobian(self._h_fn, (Et_mu, It_mu, Etp_mu, Itp_mu, a, b, c, d, P, Q)), 0)[..., 0, 0].T
         else:
-            a,omega = connected_variables[6:]
-            self.h = self.hopf_h_fn(Et_mu, It_mu, Etp_mu, Itp_mu, E_ext, I_ext, a, omega)
-            J = torch.concat(torch.autograd.functional.jacobian(self.hopf_h_fn, (Et_mu, It_mu, Etp_mu, Itp_mu, E_ext, I_ext, a, omega)), 0)[..., 0, 0].T 
+            a,omega = connected_variables[4:]
+            self.h = self.hopf_h_fn(Et_mu, It_mu, Etp_mu, Itp_mu, a, omega)
+            J = torch.concat(torch.autograd.functional.jacobian(self.hopf_h_fn, (Et_mu, It_mu, Etp_mu, Itp_mu, a, omega)), 0)[..., 0, 0].T 
 
         x0 = torch.concat([v for v in connected_variables], dim=0)
 
