@@ -10,3 +10,5 @@ Keep in mind that this is not the full repository of all code that was ever writ
 https://github.com/siddharthsrivastava0501/msc-project/tree/report-plotting
 
 However, reader beware, the above repository is incredibly messy - hence the existence of this cleaner, minimal repository. 
+
+To use this repository, simply switch to either the Belief Lifting or the Aggregator Factor branch to experiment in generating the plots in Chapter 4. To generate the plots in Chapter 3, simply change the `nr` variable in the belief lifting branch to 1. 
