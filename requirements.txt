@@ -1,0 +1,8 @@
+torch==latest
+matplotlib==latest
+numpy==latest
+collections==latest
+random==latest
+copy==latest
+sys==latest
+typing==latest
