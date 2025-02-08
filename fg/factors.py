@@ -5,6 +5,26 @@ from .gaussian import Gaussian
 from .functions import h_dXdt, h_dYdt, dEdt, dIdt
 import numpy as np
 import random
+from abc import ABC, abstractmethod
+
+class Factor(ABC):
+    def __init__(self, factor_id, z, lmbda_in, graph : Graph) -> None:
+        self.factor_id = factor_id
+        self.z = z
+        self.lmbda_in = lmbda_in
+        self.graph = graph
+
+    @abstractmethod
+    def h(self): pass
+
+    @abstractmethod
+    def linearise(self): pass
+
+    @abstractmethod
+    def update_belief(self): pass
+
+    @abstractmethod
+    def compute_and_send_messages(self): pass
 
 class ObservationFactor:
     def __init__(self, factor_id, var_id, z, lmbda_in, graph : Graph, huber = False) -> None:
@@ -134,7 +154,6 @@ class DynamicsFactor:
         Et_mu, It_mu = connected_variables[0:2]
         Etp_mu, Itp_mu = connected_variables[2:4]
         E_ext, I_ext = connected_variables[4:6]
-
 
         if self.mode == 'WC':
             a,b,c,d,P,Q = connected_variables[6:]

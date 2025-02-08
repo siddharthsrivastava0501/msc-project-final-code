@@ -23,11 +23,11 @@ def pairwise_difference_matrix(x):
 def reshape_mlp_params(all_args, a, b):
     dim = a * b + b
     args = all_args[:dim]
-    
+
     # The first a*b params are the weights, the rest of it is the bias
     weights = torch.cat([arg.view(-1) for arg in args[:a*b]], dim=0).view(b, a)
     biases = torch.cat([arg.view(-1) for arg in args[a*b:]], dim=0)
-    
+
     return weights, biases, all_args[dim:]
 
 def Se(x):
@@ -58,8 +58,8 @@ def dIdt(Ei, Ii, I_ext, ci = 9., di = 3., Q = 0.2, tau_I = 2., act = Si, G = 0.8
     return di
 
 
-def h_dXdt(Xt, Yt, a, omega, X_ext, G = 0.8):
+def h_dXdt(Xt, Yt, a, omega, X_ext = 0., G = 0.8):
     return (a - Xt**2 - Yt**2) * Xt - omega * Yt + G*X_ext
 
-def h_dYdt(Xt, Yt, a, omega, Y_ext, G = 0.8):
+def h_dYdt(Xt, Yt, a, omega, Y_ext = 0., G = 0.8):
     return (a - Xt**2 - Yt**2) * Yt + omega * Xt + G*Y_ext

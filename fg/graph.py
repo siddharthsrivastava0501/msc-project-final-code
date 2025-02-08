@@ -31,7 +31,7 @@ class Graph:
 
     def update_all_observational_factors(self):
         for key, v in self.factor_nodes.items():
-            if v.__class__.__name__ == 'PriorFactor' or v.__class__.__name__ == 'ObservationFactor':
+            if v.__class__.__name__ == 'PriorFactor' or v.__class__.__name__ == 'ObservationFactor' or v.__class__.__name__ == 'ObservationFactorDual':
                 self.factor_nodes[key].compute_and_send_messages()
 
     def update_variable_belief(self, key):

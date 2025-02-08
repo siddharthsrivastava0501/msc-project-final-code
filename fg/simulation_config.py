@@ -72,8 +72,6 @@ def simulate_hopf(config : dict):
     dt = config.get('dt', 0.05)
     nr = config.get('nr', 5)
 
-    torch.empty((nr,)).normal_(5.)
-
     a = config.get('a', torch.empty((nr,)).normal_(3., 1.))
     omega = config.get('omega', torch.empty((nr,)).normal_(5., 1.))
     beta = config.get('beta', torch.empty((nr,)).normal_(4., 1.))
